@@ -1,0 +1,125 @@
+---
+title: User
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Route functions for user actions.
+
+<FileTree>
+- api
+  - **user.ts**
+</FileTree>
+
+---
+
+### loginUser
+
+###### This function sends a request to the backend for loging a user in.  
+
+<Code
+  title="loginUser function"
+  lang="json"
+  code={`
+        export async function loginUser(
+        username: string,
+        password: string,
+        otp_code: string
+      )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. username from type string
+  2. password from type string
+  3. otp_code from type string
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### checkAuth
+
+###### This function sends a request to the backend for checking if the user's session still valids.  
+
+<Code
+  title="checkAuth function"
+  lang="json"
+  code={`
+        export async function checkAuth() {
+          try {
+            const response = await api.get("/auth/protected-route");
+            return response.data;
+          } catch (error) {
+            return null;
+          }
+        }
+    `}
+/>
+
+#### Expected Input
+  
+  The function doesn't recieve any arguments: 
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### logout
+
+###### This function sends a request to the backend for loging a user out.  
+
+<Code
+  title="logout function"
+  lang="json"
+  code={`
+        export async function checkIfUnpublishedData() {
+          const response = await api.post("/auth/logout/");
+          return response;
+        }
+    `}
+/>
+
+#### Expected Input
+  
+   The function doesn't recieve any arguments: 
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### changePassword
+
+###### This function sends a request to the backend for changing a user password.  
+
+<Code
+  title="changePassword function"
+  lang="json"
+  code={`
+        export async function changePassword(
+          currentPassword: string,
+          newPassword: string,
+          newPasswordRepeat: string
+        )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. currentPassword from type string
+  2. newPassword from type string
+  3. newPasswordRepeat from type string
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.

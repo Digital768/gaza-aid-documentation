@@ -1,0 +1,324 @@
+---
+title: File Route
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Backend python routes for file actions.
+
+<FileTree>
+- routes
+  - **file.py**
+</FileTree>
+
+---
+
+### check_if_unpublished_rows
+
+###### This function recieves a request from the frontend checks if unpublished rows exist.  
+
+<Code
+  title="check_if_unpublished_rows function"
+  lang="py"
+  code={`
+        @router.get("/check-if-unpublished-rows/")
+        def check_if_unpublished_rows(
+            db: Session = Depends(get_db), current_user=Depends(get_current_user)
+        ) -> bool:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two arguments: 
+  1. current_user - gets the user by its userame
+  2. db - gets the database
+
+#### Expected Output
+
+  The function returns true if unpublished rows (published = 1) exist and false if not.
+
+#### Body
+
+The function uses 'check_if_unpublished' function ## add link.
+
+<Code
+  title="check_if_unpublished_rows function"
+  lang="py"
+  code={`
+         try:
+            result = check_if_unpublished(db)
+            return result
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    `}
+/>
+
+---
+
+### publish_data
+
+###### This function recieves a request from the frontend and publishes data.  
+
+<Code
+  title="publish_data function"
+  lang="py"
+  code={`
+        @router.put("/publish-data")
+        def publish_data(
+            db: Session = Depends(get_db), current_user=Depends(get_current_user)
+        ) -> dict:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two arguments: 
+  1. current_user - gets the user by its userame
+  2. db - gets the database
+
+#### Expected Output
+
+  The function returns a response or error if occured.
+
+#### Body
+
+The function uses 'change_publish_status' function ## add link.
+
+<Code
+  title="publish_data function"
+  lang="py"
+  code={`
+        try:
+            result = change_publish_status(db)
+            return result
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    `}
+/>
+
+---
+
+### upload_file
+
+###### This function recieves a request from the frontend and uploads a file.  
+
+<Code
+  title="upload_file function"
+  lang="py"
+  code={`
+        @router.post("/upload-file/")
+        def upload_file(
+            file: UploadFile = File(...),
+            startDate: date = Form(...),
+            endDate: date = Form(...),
+            current_user=Depends(get_current_user),
+            db: Session = Depends(get_db),
+        ) -> JSONResponse:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves five arguments: 
+  1. current_user - gets the user by its userame
+  2. db - gets the database
+  3. file - a file from the frontend
+  4. startDate - a date from the frontend that determines the starting relevant date range 
+  5. endDate - a date from the frontend that determines the ending relevant date range 
+
+#### Expected Output
+
+  The function returns a response or error if occured.
+
+#### Body
+
+The function uses 'validate_dataframe' and 'bulk_insert_data' functions ## add link to check the data type and insert it to the db.
+
+<Code
+  title="upload_file function"
+  lang="py"
+  code={`
+       try:
+            if file.filename.endswith(".csv"):
+                df = pd.read_csv(temp_file_path, encoding="ISO-8859-8")
+            elif file.filename.endswith((".xlsx", ".xls")):
+                df = pd.read_excel(temp_file_path)
+            else:
+                raise HTTPException(status_code=400, detail="Not a valid file format")
+
+            model, errors, valid_data = validate_dataframe(df, db, startDate, endDate)
+            if "No data found within the given date range" in errors:
+                return JSONResponse(
+                    content={"detail": "No data found within the given date range"},
+                    status_code=200,
+                )
+
+            if errors:
+                raise HTTPException(status_code=422, detail=str(errors[0]))
+
+            try:
+                bulk_insert_data(db, model, valid_data)
+                response_data = {
+                    "filename": file.filename,
+                    "model": model.__name__,
+                    "rows_inserted": len(valid_data),
+                }
+                status_code = 200
+            except Exception as e:
+                response_data = {"detail": "An unexpected error occurred: " + str(e)}
+                status_code = 500
+
+            return JSONResponse(content=response_data, status_code=status_code)
+
+        finally:
+            os.unlink(temp_file_path)
+    `}
+/>
+
+---
+
+### download_data
+
+###### This function recieves a request from the frontend and downloads the requested data.  
+
+<Code
+  title="download_data function"
+  lang="py"
+  code={`
+        @router.get("/download-data", response_model=None)
+        def download_data(
+            db: Session = Depends(get_db),
+            startDate: date = Query(..., description="Start date for data filter"),
+            endDate: date = Query(..., description="End date for data filter"),
+            model_name: str = Query(..., description="Model type for data filter"),
+            current_user=Depends(get_current_user),
+        ) -> Union[FileResponse, JSONResponse]:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves five arguments: 
+  1. current_user - gets the user by its userame
+  2. model_name - the data type from the frontend (aid or drops) 
+  3. file - a file from the frontend
+  4. startDate - a date from the frontend that determines the starting relevant date range 
+  5. endDate - a date from the frontend that determines the ending relevant date range 
+
+#### Expected Output
+
+  The function returns a file with the requested data.
+
+#### Body
+
+The function uses 'download_data_from_db' function ## add link.
+
+<Code
+  title="download_data function"
+  lang="py"
+  code={`
+        result = download_data_from_db(
+            db, startDate, endDate, model_name, background_tasks
+        )
+        return result
+    `}
+/>
+
+---
+
+### delete_unpublished_data
+
+###### This function recieves a request from the frontend and deletes all the unpublished data.  
+
+<Code
+  title="delete_unpublished_data function"
+  lang="py"
+  code={`
+        @router.delete("/delete-unpublished-rows")
+        def delete_unpublished_data(
+            db: Session = Depends(get_db), current_user=Depends(get_current_user)
+        ) -> dict:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two arguments: 
+  1. current_user - gets the user by its userame
+  2. db - gets the database
+
+#### Expected Output
+
+  The function returns a response or an error if occured.
+
+#### Body
+
+The function uses 'delete_unpublished_rows' function ## add link that deletes all the rows with publish = 1.
+
+<Code
+  title="delete_unpublished_data function"
+  lang="py"
+  code={`
+        try:
+            result = delete_unpublished_rows(db)
+            return result
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    `}
+/>
+
+---
+
+### delete_data
+
+###### This function recieves a request from the frontend and deletes data between the requested data range.  
+
+<Code
+  title="delete_data function"
+  lang="py"
+  code={`
+        @router.delete("/delete-data")
+        def delete_data(
+            db: Session = Depends(get_db),
+            startDate: date = Query(..., description="Start date for data filter"),
+            endDate: date = Query(..., description="End date for data filter"),
+            model_name: str = Query(..., description="Model type for data filter"),
+            current_user=Depends(get_current_user),
+        ) -> dict:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves five arguments: 
+  1. current_user - gets the user by its userame
+  2. model_name - the data type from the frontend (aid or drops) 
+  3. db - gets the database
+  4. startDate - a date from the frontend that determines the starting relevant date range 
+  5. endDate - a date from the frontend that determines the ending relevant date range 
+
+#### Expected Output
+
+  The function returns a response or an error if occured.
+
+#### Body
+
+The function uses 'delete_rows' function ## add link that deletes all requested rows.
+
+<Code
+  title="delete_data function"
+  lang="py"
+  code={`
+        try:
+            result = delete_rows(db, startDate, endDate, model_name)
+            return result
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail="An unexpected error occurred: " + str(e)
+            )
+    `}
+/>
+
+---

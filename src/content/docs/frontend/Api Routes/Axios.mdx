@@ -1,0 +1,54 @@
+---
+title: Axios
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Defines the apiConfig object and validates responses.
+
+<FileTree>
+- api
+  - **axios.ts**
+</FileTree>
+
+---
+
+### Api Config
+
+<Code
+  title="Api Config Object"
+  lang="json"
+  code={`
+      const apiConfig: CreateAxiosDefaults = {
+      baseURL: "http://localhost:8000",
+      withCredentials: true,
+      validateStatus: function (status) {
+        return status < 400;
+      },
+    };
+    `}
+/>
+
+### Authentication Validation
+
+<Code
+  title="Authentication Validation Function"
+  lang="json"
+  code={`
+      protectedApi.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        console.log(error);
+        if (error.response?.status === 401) {
+          window.location.href = "/login"; 
+        }
+        return Promise.reject(error);
+      }
+    );
+    `}
+/>
+This function logs out the user when he is trying to send a request if the response is 401 (Unauthorized).
+
+---
+

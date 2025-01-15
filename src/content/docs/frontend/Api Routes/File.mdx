@@ -1,0 +1,100 @@
+---
+title: File
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Route functions for file requests.
+
+<FileTree>
+- api
+  - **file.ts**
+</FileTree>
+
+---
+
+### sendUploadExcel
+
+###### This function sends a request to the backend with an excel file and the relevant date range for data uploading.  
+
+<Code
+  title="sendUploadExcel function"
+  lang="json"
+  code={`
+        export async function sendUploadExcel(
+        file: File,
+        startDate: Date,
+        endDate: Date
+      )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. file from type File
+  2. startDate from type Date
+  3. endDate from type Date
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### deleteData
+
+###### This function sends a request to the backend with a date range and the data type for deleting data.  
+
+<Code
+  title="deleteData function"
+  lang="json"
+  code={`
+        export async function deleteData(
+        startDate: Date,
+        endDate: Date,
+        dataType: DataType
+      )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. startDate from type Date
+  2. endDate from type Date
+  3. dataType from type DataType ("Aid" or "Drops")
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### downloadData
+
+###### This function sends a request to the backend with a date range and the data type for downloading data.  
+
+<Code
+  title="downloadData function"
+  lang="json"
+  code={`
+        export async function downloadData(
+        startDate: Date,
+        endDate: Date,
+        dataType: DataType
+      )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. startDate from type Date
+  2. endDate from type Date
+  3. dataType from type DataType ("Aid" or "Drops")
+
+#### Expected Output
+
+  The function returns an excel file with the requested data.

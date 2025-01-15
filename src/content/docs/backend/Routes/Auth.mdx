@@ -1,0 +1,141 @@
+---
+title: Auth Route
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Backend python routes for authentication.
+
+<FileTree>
+- routes
+  - **auth.py**
+</FileTree>
+
+---
+
+### login_user
+
+###### This function recieves a request from the frontend for loging a user in.  
+
+<Code
+  title="login_user function"
+  lang="py"
+  code={`
+        @router.post("/login/")
+        def login_user(user: UserAuth, db: Session = Depends(get_db)) -> JSONResponse:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two arguments: 
+  1. user - an object from the frontend that includes the otp code
+  2. db - gets the database
+
+#### Expected Output
+
+  The function returns a success response if the user has been logged in with the created cookie or error if occured.
+
+#### Body
+
+The function uses 'get_user_by_username', 'verify_password' and 'verify_otp' functions ## add link and creates a new cookie for the user.
+
+<Code
+  title="login_user function"
+  lang="py"
+  code={`
+        db_user = get_user_by_username(db, username=user.username)
+        if db_user is None or not verify_password(user.password, db_user.password):
+            raise HTTPException(status_code=401, detail="Incorrect username or password")
+        if not OTP.verify_otp(db_user.secret, user.otp_code):
+            raise HTTPException(status_code=401, detail="Wrong OTP code")
+    `}
+/>
+
+---
+
+### logout
+
+###### This function recieves a request from the frontend for loging a user out.  
+
+<Code
+  title="checkAuth function"
+  lang="py"
+  code={`
+        @router.post("/logout")
+        def logout(
+            current_user: UserBase = Depends(get_current_user), db: Session = Depends(get_db)
+        )-> JSONResponse:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two arguments: 
+  1. user - gets the user from its username
+  2. db - gets the database
+
+#### Expected Output
+
+  The function returns a success response if the user has been logged out or error if occured.
+
+#### Body
+
+The function uses 'get_current_user' function ## add link and deletes the user cookie.
+
+<Code
+  title="logout function"
+  lang="py"
+  code={`
+        current_user.session = None
+        db.commit()
+        response = JSONResponse(content={"message": "Logged out successfully"})
+        response.delete_cookie("session")
+        return response
+    `}
+/>
+
+---
+
+### protected_route
+
+###### This function recieves a request from the frontend for loging a user out.  
+
+<Code
+  title="protected_route function"
+  lang="py"
+  code={`
+        @router.get("/protected-route", response_model=UserBase)
+        def protected_route(current_user: models.User = Depends(get_current_user)):
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. current_user - and object from the frontend that includes all the user credentials from its username
+
+#### Expected Output
+
+  The function returns the response or error if occured.
+
+#### Body
+
+The function checks if the user is authenticated and deletes its cookie if not.
+
+<Code
+  title="protected_route function"
+  lang="py"
+  code={`
+        try:
+            return UserBase(username=current_user.username)
+        except HTTPException as e:
+            response = JSONResponse(content={"detail": str(e.detail)}, status_code=e.status_code)
+            if e.status_code == 401:
+                response.delete_cookie(key="session")
+            return response
+    `}
+/>
+
+---

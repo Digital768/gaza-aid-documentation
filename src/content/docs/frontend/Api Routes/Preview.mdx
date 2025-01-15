@@ -1,0 +1,88 @@
+---
+title: Preview
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Route functions for preview actions.
+
+<FileTree>
+- api
+  - **preview.ts**
+</FileTree>
+
+---
+
+### confirmUpload
+
+###### This function sends a request to the backend for upload confirmation of the previewed data.  
+
+<Code
+  title="confirmUpload function"
+  lang="json"
+  code={`
+        export async function confirmUpload() {
+          const response = await api.put("/file/publish-data/");
+          return response.data;
+        }
+    `}
+/>
+
+#### Expected Input
+  
+  The function doesn't recieve any arguments: 
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### cancelUpload
+
+###### This function sends a request to the backend for deleting all the previewed data.  
+
+<Code
+  title="cancelUpload function"
+  lang="json"
+  code={`
+        export async function cancelUpload() {
+          const response = await api.delete("/file/delete-unpublished-rows/");
+          return response.data;
+        }
+    `}
+/>
+
+#### Expected Input
+  
+  The function doesn't recieve any arguments: 
+
+#### Expected Output
+
+  The function returns the response status and the error if occured.
+
+---
+
+### checkIfUnpublishedData
+
+###### This function sends a request to the backend for checking if previewed data exsits.  
+
+<Code
+  title="checkIfUnpublishedData function"
+  lang="json"
+  code={`
+        export async function checkIfUnpublishedData() {
+          const response = await api.get("/file/check-if-unpublished-rows/");
+          return response.data;
+        }
+    `}
+/>
+
+#### Expected Input
+  
+   The function doesn't recieve any arguments: 
+
+#### Expected Output
+
+  The function returns a boolean response: true if there is previewed data (with published = 1) or false if not.

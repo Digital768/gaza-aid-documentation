@@ -1,0 +1,117 @@
+---
+title: User Route
+description: A guide in my new Starlight docs site.
+---
+
+import { Code, FileTree } from "@astrojs/starlight/components";
+
+**Description:** Backend python routes for user actions.
+
+<FileTree>
+- routes
+  - **user.py**
+</FileTree>
+
+---
+
+### create_new_user
+
+###### This function creates new user.  
+
+<Code
+  title="create_new_user function"
+  lang="py"
+  code={`
+        @router.post("/register/")
+        def create_new_user(
+            user: UserCreate, db: Session = Depends(get_db)
+        ) -> UserResponse:
+    `}
+/>
+
+#### Expected Input
+  
+  The function doesn't recieve any arguments.
+
+
+#### Expected Output
+
+  The function returns the new user and the error if occured.
+
+#### Body
+
+The function uses 'create_user' function ## add link.
+
+<Code
+  title="create_new_user function"
+  lang="py"
+  code={`
+        try:
+            new_user = create_user(db, user)
+            return new_user
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+    `}
+/>
+
+---
+
+### change_password
+
+###### This function recieves a request from the frontend and changes a user password.  
+
+<Code
+  title="change_password function"
+  lang="py"
+  code={`
+        @router.post("/change-password")
+        def change_password(
+            user_change_password: UserChangePassword,
+            current_user=Depends(get_current_user),
+            db: Session = Depends(get_db),
+        ) -> JSONResponse:
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves three arguments: 
+  1. user_change_password - an object from the frontend that includes old password, new password and new password confirmation
+  2. current_user - gets the current connected user
+  3. db - gets the database
+
+#### Expected Output
+
+  The function returns a success response if the password has been changed or error if occured.
+
+#### Body
+
+The function uses 'verify_password' and 'hash_password' functions ## add link.
+
+<Code
+  title="change_password function"
+  lang="py"
+  code={`
+        if not verify_password(user_change_password.password, current_user.password):
+            raise HTTPException(status_code=401, detail="Incorrect current password")
+
+        if user_change_password.new_password != user_change_password.new_password_confirmation:
+            raise HTTPException(status_code=400, detail="New passwords do not match")
+    
+        hashed_password = hash_password(user_change_password.new_password)
+    
+        try:
+            current_user.password = hashed_password            
+            db.commit()            
+            db.refresh(current_user)
+
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=e)
+
+        return JSONResponse(content={"message": "Password changed successfully"})
+    `}
+/>
+
+---
