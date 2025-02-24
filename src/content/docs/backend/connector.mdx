@@ -1,0 +1,163 @@
+---
+title: Storage Connector Initialization
+sidebar:
+  order: 4
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+} from "@astrojs/starlight/components";
+
+<FileTree>
+- backend
+  - storage_connector
+    - **connector.py**
+</FileTree>
+
+## Connector Initialization
+
+The connector initialization system provides a factory pattern for creating storage connectors based on environment configuration.
+
+### Provider Configuration
+
+The system supports multiple storage providers through a configuration dictionary:
+
+<Code
+  title="Provider Configuration Dictionary"
+  lang="py"
+  code={`
+storage_connector_provider_dict = {
+    "azure": {
+        "provider": AzureStorageConnector,
+        "env_mapping": {
+            "connection_string": "AZURE_STORAGE_CONNECTION_STRING",
+            "containers": "AZURE_STORAGE_CONTAINERS"
+        }
+    },
+    "aws": {
+        "provider": AWSStorageConnector,
+        "env_mapping": {
+            "aws_access_key_id": "AWS_ACCESS_KEY_ID",
+            "aws_secret_access_key": "AWS_SECRET_ACCESS_KEY",
+            "buckets": "AWS_STORAGE_BUCKETS",
+            "region": "AWS_REGION"
+        }
+    },
+    "google": {
+        "provider": GCPStorageConnector,
+        "env_mapping": {
+            "credentials_path": "GOOGLE_APPLICATION_CREDENTIALS",
+            "buckets": "GOOGLE_STORAGE_BUCKETS"
+        }
+    },
+    "local": {
+        "provider": LocalStorageConnector,
+        "env_mapping": {
+            "base_dir": "LOCAL_STORAGE_BASE_DIR"
+        }
+    }
+}
+`}
+/>
+
+### Factory Function
+
+<Code
+  title="Storage Connector Factory"
+  lang="py"
+  code={`
+def create_storage_connector(provider: Literal["azure", "aws", "google", "local"]) -> StorageConnector:
+    """
+    Create a storage connector instance based on the provider and environment variables.
+    
+    Args:
+        provider: The cloud provider to use ("azure", "aws", "google", or "local")
+        
+    Returns:
+        StorageConnector: An initialized storage connector for the specified provider
+        
+    Raises:
+        ValueError: If required environment variables are missing
+        KeyError: If the provider is not supported
+    """
+    provider_config = storage_connector_provider_dict[provider]
+    
+    # Get configuration from environment variables
+    config = {}
+    for config_key, env_var in provider_config["env_mapping"].items():
+        value = os.getenv(env_var)
+        if value is None:
+            raise ValueError(f"Missing required environment variable: {env_var}")
+        
+        # Handle lists (comma-separated strings)
+        if config_key in ["containers", "buckets"]:
+            config[config_key] = [x.strip() for x in value.split(",")]
+        else:
+            config[config_key] = value
+
+    return provider_config["provider"](config)
+`}
+/>
+
+### Usage Examples
+
+Here are examples of how to use the connector with different providers:
+
+<Code
+  title="Usage Examples"
+  lang="py"
+  code={`
+# Azure Storage Example
+storage_connector = create_storage_connector("azure")
+azure_url = storage_connector.upload_file(
+    file_bytes=pdf_content,
+    destination_path="invoices/2024/january/invoice-123.pdf",
+    storage_name="financial-documents"
+)
+
+# AWS S3 Example
+storage_connector = create_storage_connector("aws")
+s3_url = storage_connector.upload_file(
+    file_bytes=image_content,
+    destination_path="users/profile-pictures/user123.jpg",
+    storage_name="user-content"
+)
+
+# Google Cloud Storage Example
+storage_connector = create_storage_connector("google")
+gcs_url = storage_connector.upload_file(
+    file_bytes=video_content,
+    destination_path="videos/2024/raw/recording.mp4",
+    storage_name="media-bucket"
+)
+`}
+/>
+
+### Environment Variables
+
+Required environment variables for each provider:
+
+#### Azure Storage
+- `AZURE_STORAGE_CONNECTION_STRING`: Connection string for Azure Storage
+- `AZURE_STORAGE_CONTAINERS`: Comma-separated list of container names
+
+#### AWS S3
+- `AWS_ACCESS_KEY_ID`: AWS access key ID
+- `AWS_SECRET_ACCESS_KEY`: AWS secret access key
+- `AWS_STORAGE_BUCKETS`: Comma-separated list of bucket names
+- `AWS_REGION`: AWS region name
+
+#### Google Cloud Storage
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google Cloud credentials file
+- `GOOGLE_STORAGE_BUCKETS`: Comma-separated list of bucket names
+
+#### Local Storage
+- `LOCAL_STORAGE_BASE_DIR`: Base directory for local storage
+
+<Aside type="caution">
+  Ensure all required environment variables are set for your chosen storage provider before initializing the connector.
+</Aside>

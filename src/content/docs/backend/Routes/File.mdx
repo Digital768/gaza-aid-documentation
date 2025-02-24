@@ -40,8 +40,8 @@ import { Code, FileTree } from "@astrojs/starlight/components";
   The function returns true if unpublished rows (published = 1) exist and false if not.
 
 #### Body
-
-The function uses 'check_if_unpublished' function ## add link.
+users must be authenticated to access this route.
+The function uses ['check_if_unpublished'](/backend/file-crud#check_if_unpublished) function.
 
 <Code
   title="check_if_unpublished_rows function"
@@ -75,7 +75,7 @@ The function uses 'check_if_unpublished' function ## add link.
 #### Expected Input
   
   The function recieves two arguments: 
-  1. current_user - gets the user by its userame
+  1. current_user - gets the user by the session
   2. db - gets the database
 
 #### Expected Output
@@ -83,8 +83,8 @@ The function uses 'check_if_unpublished' function ## add link.
   The function returns a response or error if occured.
 
 #### Body
-
-The function uses 'change_publish_status' function ## add link.
+users must be authenticated to access this route.
+The function uses ['change_publish_status'](/backend/file-crud#change_publish_status) function.
 
 <Code
   title="publish_data function"
@@ -122,7 +122,7 @@ The function uses 'change_publish_status' function ## add link.
 #### Expected Input
   
   The function recieves five arguments: 
-  1. current_user - gets the user by its userame
+  1. current_user - gets the user by the session
   2. db - gets the database
   3. file - a file from the frontend
   4. startDate - a date from the frontend that determines the starting relevant date range 
@@ -133,13 +133,14 @@ The function uses 'change_publish_status' function ## add link.
   The function returns a response or error if occured.
 
 #### Body
-
-The function uses 'validate_dataframe' and 'bulk_insert_data' functions ## add link to check the data type and insert it to the db.
+users must be authenticated to access this route.
+The function accepts a file in CSV or Excel format and uses [validate_dataframe](/backend/file-crud#validate_dataframe) and [bulk_insert_data](/backend/file-crud#bulk_insert_data) functions to check the data type and insert it to the db. Users must be authenticated to access this route.
 
 <Code
   title="upload_file function"
   lang="py"
   code={`
+
        try:
             if file.filename.endswith(".csv"):
                 df = pd.read_csv(temp_file_path, encoding="ISO-8859-8")
@@ -201,19 +202,19 @@ The function uses 'validate_dataframe' and 'bulk_insert_data' functions ## add l
 #### Expected Input
   
   The function recieves five arguments: 
-  1. current_user - gets the user by its userame
-  2. model_name - the data type from the frontend (aid or drops) 
-  3. file - a file from the frontend
-  4. startDate - a date from the frontend that determines the starting relevant date range 
-  5. endDate - a date from the frontend that determines the ending relevant date range 
+  1. db - gets the database
+  2. startDate - a date from the frontend that determines the starting relevant date range 
+  3. endDate - a date from the frontend that determines the ending relevant date range 
+  4. model_name - the model name of the desired data type
+  5. current_user - the current user thats logged in by the session
 
 #### Expected Output
 
   The function returns a file with the requested data.
 
 #### Body
-
-The function uses 'download_data_from_db' function ## add link.
+users must be authenticated to access this route.
+The function uses [download_data_from_db](/backend/file-crud#download_data_from_db) function.
 
 <Code
   title="download_data function"
@@ -246,7 +247,7 @@ The function uses 'download_data_from_db' function ## add link.
 #### Expected Input
   
   The function recieves two arguments: 
-  1. current_user - gets the user by its userame
+  1. current_user - gets the user by the session
   2. db - gets the database
 
 #### Expected Output
@@ -254,8 +255,8 @@ The function uses 'download_data_from_db' function ## add link.
   The function returns a response or an error if occured.
 
 #### Body
-
-The function uses 'delete_unpublished_rows' function ## add link that deletes all the rows with publish = 1.
+users must be authenticated to access this route.
+The function uses [delete_unpublished_rows](/backend/file-crud#delete_unpublished_rows) function that deletes all the rows with publish = 1.
 
 <Code
   title="delete_unpublished_data function"
@@ -273,7 +274,7 @@ The function uses 'delete_unpublished_rows' function ## add link that deletes al
 
 ### delete_data
 
-###### This function recieves a request from the frontend and deletes data between the requested data range.  
+###### This function recieves a request from the frontend and deletes all data between the requested data range.  
 
 <Code
   title="delete_data function"
@@ -293,8 +294,8 @@ The function uses 'delete_unpublished_rows' function ## add link that deletes al
 #### Expected Input
   
   The function recieves five arguments: 
-  1. current_user - gets the user by its userame
-  2. model_name - the data type from the frontend (aid or drops) 
+  1. current_user - gets the user by the session
+  2. model_name - the data type from the frontend 
   3. db - gets the database
   4. startDate - a date from the frontend that determines the starting relevant date range 
   5. endDate - a date from the frontend that determines the ending relevant date range 
@@ -304,8 +305,8 @@ The function uses 'delete_unpublished_rows' function ## add link that deletes al
   The function returns a response or an error if occured.
 
 #### Body
-
-The function uses 'delete_rows' function ## add link that deletes all requested rows.
+users must be authenticated to access this route.
+The function uses [delete_rows](/backend/file-crud#delete_rows) function that deletes all rows from the given table name.
 
 <Code
   title="delete_data function"

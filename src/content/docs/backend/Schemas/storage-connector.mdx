@@ -1,0 +1,127 @@
+---
+title: Storage Connector Schema
+
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+} from "@astrojs/starlight/components";
+
+<FileTree>
+- backend
+  - storage_connector
+    - **storage_connector_schema.py**
+</FileTree>
+
+## Schema Overview
+
+The `StorageConnector` abstract base class defines the interface that all storage providers must implement. This ensures consistent behavior across different storage solutions.
+
+## Class Definition
+
+### Abstract Base Class
+
+<Code
+  title="StorageConnector Abstract Base Class"
+  lang="py"
+  code={`
+class StorageConnector(ABC):
+    @abstractmethod
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize storage connector with provider-specific configuration.
+        """
+        pass
+
+    @abstractmethod
+    def upload_file(self, file_bytes: bytes, destination_path: str, storage_name: str) -> str:
+        """
+        Upload file bytes to cloud storage.
+        """
+        pass
+`}
+/>
+
+### Required Methods
+
+#### Initialize Method (`__init__`)
+
+The initialization method accepts provider-specific configuration:
+
+**Parameters**:
+- `config`: Dictionary containing provider-specific settings
+  - Azure: `{'connection_string': str, 'containers': List[str]}`
+  - AWS: `{'aws_access_key_id': str, 'aws_secret_access_key': str, 'buckets': List[str], 'region': str}`
+  - GCP: `{'credentials_path': str, 'buckets': List[str]}`
+  - Local: `{'base_dir': str}`
+
+#### Upload File Method
+
+**Parameters**:
+- `file_bytes`: Byte data to be uploaded
+- `destination_path`: Path/name in storage where file should be stored
+- `storage_name`: Name of the container/bucket to use
+
+**Returns**: 
+- `str`: URL or identifier of the uploaded file
+
+**Raises**: 
+- `StorageError`: If upload fails or if storage_name doesn't exist
+
+### Utility Methods
+
+#### MIME Type Detection
+
+The schema includes built-in MIME type detection for common file types:
+
+<Code
+  title="MIME Type Detection"
+  lang="py"
+  code={`
+class StorageConnector(ABC):
+    # Common MIME types for Excel and CSV files
+    SPREADSHEET_MIME_TYPES = {
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.csv': 'text/csv'
+    }
+    
+    def _get_content_type(self, file_path: str) -> str:
+        """
+        Determine content type based on file extension.
+        
+        Args:
+            file_path: Path/name of the file
+            
+        Returns:
+            str: MIME type for the file
+        """
+        _, ext = os.path.splitext(file_path.lower())
+        
+        if ext in self.SPREADSHEET_MIME_TYPES:
+            return self.SPREADSHEET_MIME_TYPES[ext]
+            
+        content_type, _ = mimetypes.guess_type(file_path)
+        return content_type or 'application/octet-stream'
+`}
+/>
+
+### Custom Exceptions
+
+<Code
+  title="Storage Error Exception"
+  lang="py"
+  code={`
+class StorageError(Exception):
+    """Custom exception for storage operations"""
+    pass
+`}
+/>
+
+<Aside type="tip">
+  When implementing a new storage connector, make sure to inherit from `StorageConnector` and implement all abstract methods.
+</Aside>

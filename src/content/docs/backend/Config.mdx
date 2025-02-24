@@ -1,0 +1,28 @@
+---
+title: Config
+sidebar:
+  order: 3
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+  } from "@astrojs/starlight/components";
+
+  <FileTree>
+- schemas
+  - **table_config.py**
+</FileTree>
+---
+
+This module defines the `TableConfig` class and its associated configurations for managing database tables, 
+their Pydantic models, foreign key relationships, and additional processing options.
+
+#### The `TableConfig` class provides a structured way to configure table-specific metadata, such as:
+- SQLAlchemy model mappings.
+- Pydantic validation models.
+- Foreign key relationships and their adjusted column names.
+- Fields to exclude during result processing.

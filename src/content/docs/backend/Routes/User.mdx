@@ -31,7 +31,9 @@ import { Code, FileTree } from "@astrojs/starlight/components";
 
 #### Expected Input
   
-  The function doesn't recieve any arguments.
+  The function recieves two arguments:
+ 1. db - gets the database
+ 2.  user: (UserCreate): A Pydantic model containing the user's registration details, such as username and password
 
 
 #### Expected Output
@@ -40,7 +42,7 @@ import { Code, FileTree } from "@astrojs/starlight/components";
 
 #### Body
 
-The function uses 'create_user' function ## add link.
+The function uses [create_user](/backend/user-crud#create_user) function.
 
 <Code
   title="create_new_user function"
@@ -87,30 +89,18 @@ The function uses 'create_user' function ## add link.
 
 #### Body
 
-The function uses 'verify_password' and 'hash_password' functions ## add link.
+The function uses [change_db_user_password](/backend/user-crud#change_db_user_password) function.
 
 <Code
   title="change_password function"
   lang="py"
   code={`
-        if not verify_password(user_change_password.password, current_user.password):
-            raise HTTPException(status_code=401, detail="Incorrect current password")
-
-        if user_change_password.new_password != user_change_password.new_password_confirmation:
-            raise HTTPException(status_code=400, detail="New passwords do not match")
-    
-        hashed_password = hash_password(user_change_password.new_password)
-    
         try:
-            current_user.password = hashed_password            
-            db.commit()            
-            db.refresh(current_user)
-
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=e)
-
-        return JSONResponse(content={"message": "Password changed successfully"})
+        result = change_db_user_password(db, current_user, user_change_password)
+        return JSONResponse(content=result)
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error occurred")
     `}
 />
 

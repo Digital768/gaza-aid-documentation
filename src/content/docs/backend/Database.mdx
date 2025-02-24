@@ -4,37 +4,46 @@ sidebar:
   order: 2
 ---
 
-import { Code, CardGrid, Card, Aside, FileTree } from "@astrojs/starlight/components";
-
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+} from "@astrojs/starlight/components";
 
 ## Schema
 
-The schema is built with <a href = "https://www.mysql.com/" target="_blank">MySQL</a>. 
+The schema is built with <a href = "https://www.mysql.com/" target="_blank">MySQL</a>.
 
 #### User Model
+
 <Code
   title="User Model"
   lang="python"
   code={`
     class User(Base):
-      __tablename__ = "users"
+          __tablename__ = "users"
 
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      username: Mapped[str] = mapped_column(
-          String, unique=True, index=True, nullable=False
-      )
-      password: Mapped[str] = mapped_column(String, nullable=False)
-      secret: Mapped[str] = mapped_column(String, nullable=False)
-      session: Mapped[str] = mapped_column(String, unique=True, nullable=True)
-      last_activity: Mapped[datetime] = mapped_column(
-          DateTime(timezone=True), nullable=True
-      )
-  `}
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
+    username: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    password: Mapped[str] = mapped_column(String(255), nullable=False)
+    secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    session: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
+    last_activity: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    admin: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+
+`}
 />
-   
+
 #### Aid Model
+
 <Code
   title="Aid Model"
   lang="python"
@@ -42,156 +51,70 @@ The schema is built with <a href = "https://www.mysql.com/" target="_blank">MySQ
     class Aid(Base):
       __tablename__ = "aid"
 
-      id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-      path_id: Mapped[int] = mapped_column(
-          Integer, ForeignKey("paths.id"), index=True, nullable=False
-      )
-      route_id: Mapped[int] = mapped_column(
-          Integer, ForeignKey("routes.id"), nullable=False
-      )
-      crossing_id: Mapped[int] = mapped_column(
-          Integer, ForeignKey("crossings.id"), nullable=False
-      )
-      date: Mapped[datetime] = mapped_column(
-          DateTime(timezone=True), nullable=False
-      )   schema
-      est_weight: Mapped[int] = mapped_column(
-          Integer, nullable=True
-      )  ] = mapped_column(
-          String(1024), nullable=True
-      )  
-      food_id: Mapped[int] = mapped_column(Integer, ForeignKey("food.id"), nullable=False)
-      ing_id: Mapped[int] = mapped_column(
-          Integer, ForeignKey("ingredients.id"), nullable=False
-      )
-      donor: Mapped[str] = mapped_column(
-          String(1024), nullable=True
-      )  
-      general_donor_id: Mapped[int] = mapped_column(
-          Integer, ForeignKey("general_donors.id"), nullable=False
-      )
-      published: Mapped[int] = mapped_column(
-          SmallInteger, nullable=False, default=0
-      ) 
-  `}
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    route_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("routes.id"), nullable=False
+    )
+    origin: Mapped[str] = mapped_column(String(1024), nullable=False)
+    crossing: Mapped[str] = mapped_column(String(1024), nullable=False)
+    date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    weight: Mapped[int] = mapped_column(Integer, nullable=True)
+    aid_details: Mapped[str] = mapped_column(String(1024), nullable=False)
+    food_category: Mapped[str] = mapped_column(String(1024), nullable=False)
+    donating_organization: Mapped[str] = mapped_column(String(1024), nullable=False)
+    aid_category: Mapped[str] = mapped_column(String(1024), nullable=False)
+    donating_organization_category_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("donating_organization_category.id"), nullable=False
+    )
+    airdrops: Mapped[int] = mapped_column(Integer, nullable=True)
+    published: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+
+`}
 />
 
-#### Drops Model
+#### Routes Model
+
 <Code
-  title="Drops Model"
+  title="Routes Model"
   lang="python"
   code={`
-    class Drops(Base):
-      __tablename__ = "drops"
+    class Routes(Base):
+      __tablename__ = "routes"
 
-      id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-      date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-      leading_country: Mapped[str] = mapped_column(String(1024))
-      involved_countries: Mapped[str] = mapped_column(String(1024))
-      drop_number: Mapped[int] = mapped_column(
-          Integer
-      )  
-      est_pkg_num: Mapped[int] = mapped_column(
-          Integer
-      )  
-      act_pkg_num: Mapped[int] = mapped_column(
-          Integer
-      )  
-      weight: Mapped[int] = mapped_column(Integer)  
-      leading_country_en: Mapped[str] = mapped_column(String(1024))
-      published: Mapped[int] = mapped_column(
-          SmallInteger, nullable=False, default=0
-      )
-  `}
+      __tablename__ = "routes"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+`}
 />
 
-#### Crossings Model
+#### Donating_Organization_Category Model
+
 <Code
-  title="Crossings Model"
+  title="Donating_Organization_Category Model"
   lang="python"
   code={`
-   class Crossings(Base):
-      __tablename__ = "crossings"
+   class Donating_Organization_Category(Base):
+      __tablename__ = "donating_organization_category"
 
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      name_eng: Mapped[str] = mapped_column(nullable=False, default="")
-      name_heb: Mapped[str] = mapped_column(nullable=False, default="")
-  `}
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+`}
 />
 
-#### Food Model
-<Code
-  title="Food Model"
-  lang="python"
-  code={`
-    class Food(Base):
-      __tablename__ = "food"
 
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      desc_eng: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-      desc_heb: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-  `}
-/>
+## Models
 
-#### General_Donors Model
-<Code
-  title="General_Donors Model"
-  lang="python"
-  code={`
-    class General_Donors(Base):
-      __tablename__ = "general_donors"
+- User: represents a user in the app.
+- Aid: represents a type of humanitarin aid data.
+- Routes: represents an aid route.
+- Donating_Organization_Category: represents an aid donor category.
 
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      name_eng: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-      name_heb: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-  `}
-/>
-
-#### Ingredients Model
-<Code
-  title="Ingredients Model"
-  lang="python"
-  code={`
-    class Ingredients(Base):
-      __tablename__ = "ingredients"
-
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      name_eng: Mapped[str] = mapped_column(String(128), nullable=False)
-      name_heb: Mapped[str] = mapped_column(String(128), nullable=False)
-      is_volume: Mapped[int] = mapped_column(SmallInteger, default=0)
-  `}
-/>
-
-#### Paths Model
-<Code
-  title="Paths Model"
-  lang="python"
-  code={`
-   class Paths(Base):
-      __tablename__ = "paths"
-
-      id: Mapped[int] = mapped_column(
-          Integer, primary_key=True, index=True, autoincrement=True
-      )
-      desc_eng: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-      desc_heb: Mapped[str] = mapped_column(String(128), nullable=False, default="")
-  `}
-/>
-
-## Models 
-- User: represents a user in the app.   
-- Aid: represents a type of humanitarin aid data. 
-- Drops: represents a type of humanitarin aid data delievered by drop. 
-- Crossings: represents a crossing. 
-- Food: represents a food item. 
-- General_Donors: represents an aid donor.
-- Ingredients: represents an ingredient item. 
-- Paths: represents a path. 

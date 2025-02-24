@@ -1,0 +1,123 @@
+---
+title: User Crud
+sidebar:
+  order: 6
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+  } from "@astrojs/starlight/components";
+
+  <FileTree>
+- backend
+  - **user_crud.py**
+</FileTree>
+---
+
+## create_user
+###### Handle the creation of a new user in the database.
+
+<Code
+  title="create_user function"
+  lang="py"
+  code={`
+  def create_user(db: Session, user: UserCreate):
+   
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two argument: 
+  1. db - gets the database
+  2. user(UserCreate) - an object that containes username and password
+
+#### Expected Output
+
+  The function returns a response model containing the newly created user's username and the URL of the QR code for OTP setup.
+
+#### Body
+This function creates a new user entry in the database. It hashes the user's password, generates an OTP secret, and creates
+    a new `User` record in the database. After committing the record, it generates a QR code URL and image for OTP setup. The function
+    returns a response model with the user's username and the QR code URL.
+
+<Code
+  title="create_user function"
+  lang="py"
+  code={`
+    hashed_password = password.hash_password(user.password)
+    secret = OTP.generate_otp_secret()
+    qr_code_url = OTP.get_qr_code_url(secret,user.username)
+    db_user = models.User(
+        username=user.username, password=hashed_password, secret=secret
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return UserResponse(
+        username=db_user.username, password=user.password, qr_code_url=qr_code_url
+    )
+    `}
+/>
+
+
+## change_db_user_password
+###### Change the password for a user in the database.
+
+<Code
+  title="change_db_user_password function"
+  lang="py"
+  code={`
+ def change_db_user_password(
+    db: Session, current_user: UserCreate, user_change_password: UserChangePassword
+):
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves two argument: 
+  1. db - gets the database
+  2. current_user (UserCreate): The current logged in user object.
+  3.  user_change_password (UserChangePassword): A Pydantic model containing the current password,
+                                                   new password, and new password confirmation.
+
+#### Expected Output
+- Returns a dictionary with a message indicating successful password change.
+- HTTPExceptions if current password is incorrect or if new password and its confirmation do not match
+
+
+
+#### Body
+  This function verifies the current password, checks if the new password and its confirmation match,
+    and then updates the user's password in the database.
+
+<Code
+  title="create_user function"
+  lang="py"
+  code={`
+    if not password.verify_password(
+        user_change_password.password, current_user.password
+    ):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+
+    if (
+        user_change_password.new_password
+        != user_change_password.new_password_confirmation
+    ):
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+
+    hashed_password = password.hash_password(user_change_password.new_password)
+
+    current_user.password = hashed_password
+    db.commit()
+    db.refresh(current_user)
+
+    return {"message": "Password changed successfully"}
+    `}
+/>

@@ -1,0 +1,187 @@
+---
+title: Application Setup
+sidebar:
+  order: 1
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+} from "@astrojs/starlight/components";
+
+<FileTree>
+- backend
+  - **main.py**
+  - **app.py**
+</FileTree>
+
+## Application Overview
+
+The application is built using FastAPI and implements session-based authentication with CORS middleware. It's designed to handle both development and production environments, with different configurations for each mode.
+
+## Key Components
+
+### Environment Configuration
+
+The application uses environment variables to determine its behavior:
+
+- `EXPIRATION_TIME`: Defines the session timeout duration
+- `ENV_MODE`: Determines whether the app runs in development or production mode
+- `FRONTEND_URL`: Sets the allowed origin for CORS based on the environment
+
+<Code
+  title="Environment Setup"
+  lang="py"
+  code={`
+EXPIRATION_TIME = timedelta(minutes=int(config("EXPIRATION_TIME")))
+ENV_MODE = config("ENV_MODE", default="development")
+FRONTEND_URL = "http://localhost:5173" if ENV_MODE == "development" else "http://localhost:8000"
+`}
+/>
+
+### Application Instances
+
+The setup creates two FastAPI instances:
+
+1. Main application (`app`): Handles all routes in development and serves static files in production
+2. API application (`api_app`): Manages API routes specifically in production mode
+
+<Code
+  title="Application Instances"
+  lang="py"
+  code={`
+app = FastAPI(docs_url=None)
+if ENV_MODE == "production":
+    api_app = FastAPI(docs_url=None)
+`}
+/>
+
+### CORS Configuration
+
+The application implements CORS middleware to handle cross-origin requests securely:
+
+<Code
+  title="CORS Setup"
+  lang="py"
+  code={`
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
+)
+`}
+/>
+
+## Core Functions
+
+### Database Session Management
+
+<Code
+  title="Database Session Handler"
+  lang="py"
+  code={`
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+`}
+/>
+
+### User Authentication
+
+The application implements session-based authentication with automatic session expiration:
+
+<Code
+  title="User Authentication"
+  lang="py"
+  code={`
+def get_current_user(
+    session: Optional[str] = Cookie(None), 
+    db: Session = Depends(get_db)
+) -> models.User:
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    query = select(models.User).where(models.User.session == session)
+    result = db.execute(query)
+    user = result.scalar_one_or_none()
+
+    # ... session validation and activity update logic
+`}
+/>
+
+### Admin Authorization
+
+<Code
+  title="Admin Check"
+  lang="py"
+  code={`
+def is_admin(current_user=Depends(get_current_user)):
+    if current_user.admin != 1:
+        raise HTTPException(
+            status_code=403, 
+            detail="you don't have permission to access this resource"
+        )
+    return True
+`}
+/>
+
+## Environment-Specific Setup
+
+### Development Mode
+
+In development mode, the application:
+- Runs the API directly on the main application instance
+- Includes all routers directly on the main app
+- Allows for separate frontend development server
+
+### Production Mode
+
+In production mode, the application:
+- Mounts the API under the `/api` path
+- Serves static files from the `static` directory
+- Implements custom 404 handlers for both API and main application
+- Handles SPA routing by serving `index.html` for unknown routes
+
+<Code
+  title="Production Mode Setup"
+  lang="py"
+  code={`
+if ENV_MODE == "production":
+    # Mount API routes
+    app.mount("/api", api_app)
+    
+    # Serve static files
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    
+    # Handle 404 errors
+    @app.exception_handler(404)
+    async def custom_404_handler(request, exc):
+        return FileResponse('static/index.html')
+`}
+/>
+
+## Running the Application
+
+The application can be started using Uvicorn:
+
+<Code
+  title="Running the App"
+  lang="py"
+  code={`
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="localhost", port=8000)
+`}
+/>
+
+<Aside type="tip">
+  In development mode, you can run the frontend separately on port 5173 while the backend runs on port 8000. In production, everything is served from port 8000.
+</Aside>

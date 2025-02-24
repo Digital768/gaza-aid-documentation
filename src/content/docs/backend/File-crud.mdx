@@ -1,0 +1,431 @@
+---
+title: File Crud
+sidebar:
+  order: 5
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+  } from "@astrojs/starlight/components";
+
+  <FileTree>
+- backend
+  - **file_crud.py**
+</FileTree>
+---
+
+## check_if_unpublished
+###### This function recieves a db session and checks if there are any unpublished records across all configured tables.
+
+<Code
+  title="check_if_unpublished function"
+  lang="py"
+  code={`
+        def check_if_unpublished(db: Session) -> bool:
+            for data_type in TABLE_CONFIGS.values():
+        table_name = data_type.sqlalchemy_model
+        unpublished_query = select(exists().where(table_name.published == 0))
+
+        if db.execute(unpublished_query).scalar():
+            return True
+
+    return False
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. db - gets the database
+
+#### Expected Output
+
+  The function returns true if it finds at least 1 result. returns False otherwise.
+
+
+## change_publish_status
+###### Update all unpublished records to published status across all configured tables.
+
+<Code
+  title="change_publish_status"
+  lang="py"
+  code={`
+        updated_data_type_count = 0
+    for data_type in TABLE_CONFIGS.values():
+        table_name = data_type.sqlalchemy_model
+        data_type_update = (
+            update(table_name).where(table_name.published == 0).values(published=1)
+        )
+        data_type_result = db.execute(data_type_update)
+        updated_data_type_count += data_type_result.rowcount
+        db.commit()
+    return {
+        "updated_data_type_count": updated_data_type_count,
+    }
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. db - gets the database
+
+#### Expected Output
+
+  The function returns a count of the updated records
+
+
+## validate_dataframe
+###### Validate and transform a pandas DataFrame for database insertion.
+
+<Code
+  title="change_publish_status"
+  lang="py"
+  code={`
+  def validate_dataframe(
+    df: pd.DataFrame, db: Session, start_date: date, end_date: date, dataType: str, extension
+) -> tuple[Optional[Type], List[dict]]:
+        config = TABLE_CONFIGS.get(dataType)
+    if not config in TABLE_CONFIGS.values():
+        raise ValueError(f"Invalid table name: {dataType}")
+
+    try:
+        # Convert column names to lowercase
+        df.columns = df.columns.str.lower()
+        # Convert date columns
+        if "date" in df.columns:
+            # Convert to datetime using the YYYY-MM-DD format
+            if extension == '.csv':
+                df["date"] = df["date"].apply(lambda x: parser.parse(x))
+            df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+
+            # Filter by date range
+            mask = (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
+            df = df[mask]
+
+            if len(df) == 0:
+                return None, []
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error parsing date: {str(e)}")
+
+    # Convert pandas NaN values to Python None
+    # This is necessary because Pydantic validation doesn't handle pandas NaN values properly,
+    # but it can validate Python None values for optional fields
+    df = df.replace({np.nan: None})
+    try:
+        # Validate each row from the Excel file against our data rules:
+        # - Check that all required fields are present (e.g., route, origin, crossing)
+        # - Verify data types (e.g., dates are valid dates, weights are non-negative numbers)
+        # - Reject any rows with unexpected extra columns
+        # This validation happens before we try to save to the database to catch data issues early
+        validated_rows = []
+        for index, row in df.iterrows():
+            try:
+                # Convert row to dict and validate using Pydantic
+                row_dict = row.to_dict()
+                validated_data = config.pydantic_model(**row_dict)
+                validated_rows.append(validated_data)  # Keep as Pydantic model instance
+            except ValidationError as e:
+                raise HTTPException(
+                    status_code=422, detail=format_validation_error(e, index + 2)
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unexpected error in row {index + 2}: {str(e)}",
+                )
+        # Convert the validated rows to a DataFrame for easier processing
+        validated_df = pd.DataFrame([row.model_dump() for row in validated_rows])
+        validated_df = validated_df.replace({np.nan: None})
+
+        # Handle foreign key relationships
+        for col_name, fk_model in config.foreign_key_models.items():
+            if col_name in validated_df.columns:
+                values = set(
+                    str(value).lower().strip()
+                    for value in validated_df[col_name].dropna().unique()
+                )
+                mapping = get_foreign_key_mapping(db, fk_model["model"], values)
+                case_insensitive_mapping = {
+                    k.lower().strip(): v for k, v in mapping.items()
+                }
+                # Apply mapping with case-insensitive comparison
+                validated_df[col_name] = validated_df[col_name].apply(
+                    lambda x: (
+                        case_insensitive_mapping.get(str(x).lower().strip())
+                        if pd.notna(x)
+                        else None
+                    )
+                )
+                validated_df.rename(
+                    columns={col_name: fk_model["adjusted_column_name"]}, inplace=True
+                )
+
+        # Convert the DataFrame to a list of dictionaries after foreign key handling
+        final_data = validated_df.to_dict("records")
+
+        return config.sqlalchemy_model, final_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. df (pd.DataFrame): Input DataFrame to validate
+  2. db (Session): SQLAlchemy database session
+  3. start_date (date): Start date for filtering records
+  4. end_date (date): End date for filtering records
+  5. dataType (str): Name of the data type/table to validate against.
+
+#### Expected Output
+
+ Tuple containing:
+            - SQLAlchemy model class (or None if validation fails)
+            - List of validated and transformed row dictionaries ready for database insertion
+
+## bulk_insert_data
+###### Inserts multiple records into the database for a given model in a single transaction.
+
+<Code
+  title="bulk_insert_data"
+  lang="py"
+  code={`
+        def bulk_insert_data(db: Session, model: type, data: List[dict]):
+          try:
+        db.add_all([model(**item) for item in data])
+        # This method can be more efficient than add_all() for inserting large numbers of rows, as it bypasses some of SQLAlchemy's unit-of-work machinery.
+        # db.bulk_insert_mappings(model, data)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. db - gets the database
+
+#### Expected Output
+
+  The function returns an error if the operation fails and rollback the database
+
+## download_data_from_db
+###### Download data from the database as an Excel file for a specified model and date range.
+
+<Code
+  title="download_data_from_db"
+  lang="py"
+  code={`
+  def download_data_from_db(
+    db: Session, startDate: date, endDate: date, model_name: str
+) -> StreamingResponse:
+        model = TABLE_CONFIGS.get(model_name)
+    if not model in TABLE_CONFIGS.values():
+        raise ValueError(f"Model does not exists: {model_name}")
+
+    data = fetch_model_data(db, startDate, endDate, model)
+    try:
+        df = pd.DataFrame(data)
+        # File Writing: The pandas ExcelWriter operations are synchronous and could potentially block the event loop if the dataset is very large.
+        # This is generally okay for smaller to medium-sized datasets, but for very large datasets, you might want to consider offloading this work to a separate process or thread.
+        # Create a BytesIO object to store the Excel file in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df.to_excel(writer, sheet_name="data", index=False)
+            worksheet = writer.sheets["data"]
+            for i, col in enumerate(df.columns):
+                worksheet.set_column(i, i, 20)
+        # Reset pointer to the beginning of the BytesIO object
+        output.seek(0)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename={startDate}-{endDate}_{model_name}_data.xlsx"
+        },
+    )
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves four arguments: 
+  1. db (Session): SQLAlchemy database session
+  2. start_date (date): Start date for filtering records
+  3. end_date (date): End date for filtering records
+  4. dataType (str): Name of the data type/table to validate against.
+
+#### Expected Output
+
+  The function returns an Excel file stream containing the requested data or an error message if the operation fails.
+
+#### Body
+- the function uses [fetch_model_data](/backend/file-crud#fetch_model_data) function to Fetch and process model data from the database based on the given dates and the model configuration from the TABLE_CONFIGS json.
+- The Excel file includes all columns from the model except excluded fields.
+- Column widths are set to 20 for better readability.
+- The file is named in the format: startDate-endDate_model_name_data.xlsx.
+
+
+## fetch_model_data
+###### Fetch and process model data from the database based on specified parameters.
+
+<Code
+  title="fetch_model_data"
+  lang="py"
+  code={`
+  def fetch_model_data(
+    db: Session, start_date: date, end_date: date, table_config: TableConfig
+) -> list[Dict[str, Any]]:
+        model = table_config.sqlalchemy_model
+
+    query = select(model)
+
+    # Join each foreign key table to get descriptive names instead of just IDs
+    # For example, if we have category_id in the main table, join with categories table
+    # to get the category name instead of just showing the ID
+    for fk_field, fk_info in table_config.foreign_key_models.items():
+        fk_model = fk_info["model"]
+        adjusted_column = fk_info["adjusted_column_name"]
+
+        # Add join and select the name column from the foreign key table
+        query = query.join(
+            fk_model, getattr(model, adjusted_column) == fk_model.id
+        ).add_columns(fk_model.name.label(fk_field))
+
+    if hasattr(model, "date"):
+        query = query.where(model.date.between(start_date, end_date))
+
+    if hasattr(model, "published"):
+        query = query.where(model.published == 1)
+
+    results = db.execute(query).all()
+
+    processed_results = []
+    for result in results:
+        # Convert the main model to dict
+        data = result[0].to_dict()
+
+        # Remove internal/technical fields that shouldn't be exposed in the output
+        # For example:
+        # - 'published' status is used internally to track preview vs published state
+        # - 'id' is an internal database identifier not meaningful to end users
+        # - Other technical fields that are used for database operations but not relevant
+        #   for data analysis or reporting
+        for field in table_config.excluded_fields:
+            data.pop(field, None)
+
+        if "date" in data:
+            # Convert datetime to the desired string format, e.g, Friday, January 5, 2024
+            data["date"] = data["date"].strftime("%A, %B %d, %Y").lower()
+
+        # Replace foreign key IDs with names
+        for fk_field, fk_info in table_config.foreign_key_models.items():
+            adjusted_column = fk_info["adjusted_column_name"]
+            data.pop(adjusted_column, None)
+            data[fk_field] = getattr(result, fk_field)
+
+        processed_results.append(data)
+
+    return processed_results
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves four arguments: 
+  1. db (Session): SQLAlchemy database session
+  2. start_date (date): Start date for filtering records
+  3. end_date (date): End date for filtering records
+  4. table_config (TableConfig): Configuration object containing model and relationship details.
+
+#### Expected Output
+
+  The function returns a List of dictionaries containing processed model data where:
+            - Foreign key IDs are replaced with their corresponding names
+            - Dates are formatted as strings
+            - Excluded fields are removed
+            - Published status is filtered
+
+
+## delete_unpublished_rows
+###### Delete all unpublished records across all configured tables.
+
+<Code
+  title="delete_unpublished_rows"
+  lang="py"
+  code={`
+  def delete_unpublished_rows(db: Session) -> dict:
+  data_type_delete_query_count = 0
+    for data_type in TABLE_CONFIGS.values():
+        table_name = data_type.sqlalchemy_model
+        data_type_delete_query = delete(table_name).where(table_name.published == 0)
+        data_type_result = db.execute(data_type_delete_query)
+        data_type_delete_query_count += data_type_result.rowcount
+        db.commit()
+    return {
+        "updated_data_type_count": data_type_delete_query_count,
+    }
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves one argument: 
+  1. db (Session): SQLAlchemy database session
+
+
+#### Expected Output
+
+  The function returns a dict Contains 'updated_data_type_count' indicating the total number of records deleted.
+
+
+## delete_rows
+###### Delete records within a date range for a specified model.
+
+<Code
+  title="delete_rows"
+  lang="py"
+  code={`
+  def delete_rows(db: Session, startDate: date, endDate: date, model_name: str) -> dict:
+  model = TABLE_CONFIGS.get(model_name)
+      if not model in TABLE_CONFIGS.values():
+          raise ValueError(f"Invalid model name: {model_name}")
+      table_name = model.sqlalchemy_model
+      delete_model_query = delete(table_name).where(
+          table_name.date.between(startDate, endDate)
+      )
+      result = db.execute(delete_model_query)
+      db.commit()
+      return {
+          "deleted_rows_count": result.rowcount,
+      }
+    `}
+/>
+
+#### Expected Input
+  
+  The function recieves four arguments: 
+  1. db (Session): SQLAlchemy database session
+  2. start_date (date): Start date for filtering records
+  3. end_date (date): End date for filtering records
+  4. dataType (str): Name of the data type/table .
+
+
+#### Expected Output
+  returns a dict that Contains 'deleted_rows_count' indicating number of records deleted from the specified data type.
+  if the data type wasn't found it returns an error.
