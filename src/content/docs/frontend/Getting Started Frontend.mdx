@@ -49,4 +49,9 @@ import cloneInVsCode from "../../../assets/clone_in_vs_code.png"; // Image is 16
 
 5. Select the appropriate branch and click the Run button at the bottom right. 
 
+6. in the azure web app go to Settings > Configuration and set the startup command to:
+"PYTHONPATH="/home/site/wwwroot/.python_packages/lib/site-packages" python3 -m gunicorn --bind 0.0.0.0:8000 --timeout 600 --worker-class uvicorn.workers.UvicornWorker main:app".
+we do it because unless we set the PYTHONPATH, it doesn't find the packages and therefore won't work.
+
+
 </Steps>

@@ -1,0 +1,224 @@
+---
+title: AidData Schema
+description: A guide in my new Starlight docs site.
+
+---
+
+import {
+  Code,
+  CardGrid,
+  Card,
+  Aside,
+  FileTree,
+} from "@astrojs/starlight/components";
+
+<FileTree>
+- models
+  - aid
+    - **aid_data_schema.py**
+</FileTree>
+
+## Schema Overview
+
+The `AidData` Pydantic model defines the structure and validation rules for aid distribution data. It ensures data integrity by enforcing strict type checking, validating field values, and forbidding extra fields.
+
+## Class Definition
+
+### Pydantic Model
+
+<Code
+  title="AidData Pydantic Model"
+  lang="py"
+  code={`
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field, validator, ConfigDict
+
+class AidData(BaseModel):
+    route: str = Field(..., description="Route identifier")
+    origin: str = Field(..., description="Origin country")
+    crossing: str = Field(..., description="Crossing name")
+    date: datetime = Field(..., description="Date of aid delivery")
+    weight: Optional[int] = Field(None, ge=0, description="Estimated weight")
+    aid_details: str = Field(..., description="Aid details")
+    aid_category: str = Field(..., description="Aid category")
+    food_category: str = Field(..., description="Food category")
+    donating_organization: str = Field(..., description="Donating organization")
+    donating_organization_category: str = Field(..., description="Donating organization category")
+    airdrops: Optional[int] = Field(None, ge=0, description="Number of airdrops")
+
+    @validator("weight", "airdrops", pre=True)
+    def validate_numeric(cls, v):
+        if v is None:
+            return v
+        try:
+            value = int(v)
+            if value < 0:
+                raise ValueError("Value must be non-negative")
+            return value
+        except (TypeError, ValueError):
+            raise ValueError("Must be a valid non-negative integer")
+
+    model_config = ConfigDict(
+        extra="forbid",  # Forbid extra fields
+        strict=True,     # Enable strict type checking
+    )
+`}
+/>
+
+## Required Fields and Methods
+
+### Field Definitions
+
+#### Route (`route`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Identifier for the aid distribution route
+
+#### Origin (`origin`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Country of origin for the aid
+
+#### Crossing (`crossing`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Name of the crossing point
+
+#### Date (`date`)
+- **Type**: `datetime`
+- **Required**: Yes
+- **Description**: Date of aid delivery
+
+#### Weight (`weight`)
+- **Type**: `Optional[int]`
+- **Required**: No
+- **Description**: Estimated weight of the aid
+- **Constraints**: Must be non-negative (≥ 0)
+
+#### Aid Details (`aid_details`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Detailed description of the aid
+
+#### Aid Category (`aid_category`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Category of the aid
+
+#### Food Category (`food_category`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Category of food aid
+
+#### Donating Organization (`donating_organization`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Organization providing the aid
+
+#### Donating Organization Category (`donating_organization_category`)
+- **Type**: `str`
+- **Required**: Yes
+- **Description**: Category of the donating organization
+
+#### Airdrops (`airdrops`)
+- **Type**: `Optional[int]`
+- **Required**: No
+- **Description**: Number of airdrops associated with the aid
+- **Constraints**: Must be non-negative (≥ 0)
+
+### Utility Methods
+
+#### Numeric Validation (`validate_numeric`)
+
+<Code
+  title="Numeric Field Validator"
+  lang="py"
+  code={`
+@validator("weight", "airdrops", pre=True)
+def validate_numeric(cls, v):
+    if v is None:
+        return v
+    try:
+        value = int(v)
+        if value < 0:
+            raise ValueError("Value must be non-negative")
+        return value
+    except (TypeError, ValueError):
+        raise ValueError("Must be a valid non-negative integer")
+`}
+/>
+
+- **Purpose**: Ensures `weight` and `airdrops` are valid non-negative integers
+- **Behavior**: 
+  - Accepts `None` for optional fields
+  - Converts input to `int` and checks for non-negativity
+  - Raises `ValueError` for invalid inputs
+
+## Configuration
+
+The model enforces specific configuration settings:
+
+<Code
+  title="Model Configuration"
+  lang="py"
+  code={`
+model_config = ConfigDict(
+    extra="forbid",  # Forbid extra fields
+    strict=True,     # Enable strict type checking
+)
+`}
+/>
+
+- **`extra="forbid"`**: Prevents additional undefined fields
+- **`strict=True`**: Enforces strict type checking
+
+## Usage Example
+
+The schema is used to validate data within a broader configuration:
+
+<Code
+  title="Validation Usage"
+  lang="py"
+  code={`
+# Sample data
+row_dict = {
+    "route": "R1",
+    "origin": "CountryA",
+    "crossing": "BorderX",
+    "date": "2023-10-15T12:00:00",
+    "weight": 500,
+    "aid_details": "Medical supplies",
+    "aid_category": "Health",
+    "food_category": "N/A",
+    "donating_organization": "Org1",
+    "donating_organization_category": "NGO",
+    "airdrops": 2
+}
+
+# Validation
+validated_data = AidData(**row_dict)
+
+# Configuration context
+TABLE_CONFIGS = {
+    "aid": TableConfig(
+        sqlalchemy_model=Aid,
+        pydantic_model=AidData,
+        foreign_key_models={
+            "route": {"model": Routes, "adjusted_column_name": "route_id"},
+            "donating_organization_category": {
+                "model": Donating_Organization_Category,
+                "adjusted_column_name": "donating_organization_category_id",
+            },
+        },
+        excluded_fields=["published", "id"],
+    )
+}
+config = TABLE_CONFIGS.get("aid")
+validated_data = config.pydantic_model(**row_dict)
+`}
+/>
+
+<Aside type="tip">
+  When using the `AidData` model, ensure all required fields are provided and that optional numeric fields (`weight`, `airdrops`) are either `None` or non-negative integers.
+</Aside>
